@@ -82,6 +82,45 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(meta["summary"]["已成交"], 2)
         self.assertEqual(meta["summary"]["潛在客戶"], 1)
 
+    def names(self, query):
+        status, rows = self.call("GET", "/api/customers?" + query)
+        self.assertEqual(status, 200, rows)
+        return [r["name"] for r in rows]
+
+    def test_sort(self):
+        a = self.create(name="Alice", company="Zeta")
+        b = self.create(name="Bob", company="")
+        c = self.create(name="Carol", company="Alpha", status="已成交")
+        for cust, date in [(a, "2026-09-10"), (c, "2026-09-20")]:
+            self.call("POST", f"/api/customers/{cust['id']}/interactions",
+                      {"contact_date": date, "content": "x"})
+
+        self.assertEqual(self.names("sort=name"), ["Alice", "Bob", "Carol"])
+        self.assertEqual(self.names("sort=name&order=desc"), ["Carol", "Bob", "Alice"])
+        # 沒有公司名稱、從未聯絡的客戶，不論升冪或降冪都排在最後
+        self.assertEqual(self.names("sort=company"), ["Carol", "Alice", "Bob"])
+        self.assertEqual(self.names("sort=company&order=desc"), ["Alice", "Carol", "Bob"])
+        self.assertEqual(self.names("sort=last_contact"), ["Alice", "Carol", "Bob"])
+        self.assertEqual(self.names("sort=last_contact&order=desc"), ["Carol", "Alice", "Bob"])
+
+        # 排序可與搜尋、篩選同時使用
+        self.assertEqual(self.names("sort=name&order=desc&status="
+                                    + urllib.parse.quote("潛在客戶")), ["Bob", "Alice"])
+
+        # 未指定排序時維持原本的「最近更新優先」
+        conn = self.server.db.conn
+        for cust, ts in [(a, "2026-01-02"), (b, "2026-01-03"), (c, "2026-01-01")]:
+            conn.execute("UPDATE customers SET updated_at = ? WHERE id = ?", (ts, cust["id"]))
+        conn.commit()
+        self.assertEqual(self.names(""), ["Bob", "Alice", "Carol"])
+
+    def test_sort_validation(self):
+        status, body = self.call("GET", "/api/customers?sort=email")
+        self.assertEqual(status, 400)
+        self.assertIn("排序欄位", body["error"])
+        status, _ = self.call("GET", "/api/customers?sort=name&order=up")
+        self.assertEqual(status, 400)
+
     def test_interactions(self):
         c = self.create()
         path = f"/api/customers/{c['id']}/interactions"

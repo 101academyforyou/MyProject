@@ -55,6 +55,11 @@ async function loadCustomers() {
   const status = $("#filter-status").value;
   if (q) params.set("q", q);
   if (status) params.set("status", status);
+  const sort = $("#sort-field").value;
+  if (sort) {
+    params.set("sort", sort);
+    params.set("order", $("#sort-order").dataset.order);
+  }
   state.customers = await api("GET", "/api/customers?" + params);
   renderList();
 }
@@ -200,6 +205,24 @@ $("#search").addEventListener("input", () => {
 
 $("#filter-status").addEventListener("change", () => {
   renderSummary();
+  loadCustomers();
+});
+
+function renderSortOrder() {
+  const btn = $("#sort-order");
+  btn.disabled = !$("#sort-field").value;
+  btn.textContent = btn.dataset.order === "asc" ? "↑ 升冪" : "↓ 降冪";
+}
+
+$("#sort-field").addEventListener("change", () => {
+  renderSortOrder();
+  loadCustomers();
+});
+
+$("#sort-order").addEventListener("click", (e) => {
+  const btn = e.currentTarget;
+  btn.dataset.order = btn.dataset.order === "asc" ? "desc" : "asc";
+  renderSortOrder();
   loadCustomers();
 });
 
