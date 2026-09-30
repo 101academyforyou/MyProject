@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>客戶管理系統</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>客戶管理系統</h1>
+    <button id="btn-new" class="primary">＋ 新增客戶</button>
+  </header>
+
+  <main>
+    <section class="summary" id="summary"></section>
+
+    <section class="toolbar">
+      <input id="search" type="search" placeholder="搜尋名稱、公司、Email、電話、備註…">
+      <select id="filter-status"><option value="">全部狀態</option></select>
+    </section>
+
+    <div class="layout">
+      <section class="list-pane">
+        <table>
+          <thead>
+            <tr><th>客戶</th><th>聯絡方式</th><th>狀態</th><th>最後聯絡</th></tr>
+          </thead>
+          <tbody id="customer-rows"></tbody>
+        </table>
+        <p id="empty" class="empty" hidden>沒有符合條件的客戶</p>
+      </section>
+
+      <aside class="detail-pane" id="detail">
+        <p class="empty">請從左側選擇一位客戶</p>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="customer-dialog">
+    <form id="customer-form" method="dialog">
+      <h2 id="dialog-title">新增客戶</h2>
+      <label>客戶名稱 *<input name="name" required></label>
+      <label>公司<input name="company"></label>
+      <div class="row">
+        <label>Email<input name="email" type="email"></label>
+        <label>電話<input name="phone"></label>
+      </div>
+      <label>地址<input name="address"></label>
+      <label>狀態<select name="status"></select></label>
+      <label>備註<textarea name="notes" rows="3"></textarea></label>
+      <p class="error" id="form-error"></p>
+      <div class="actions">
+        <button type="button" id="btn-cancel">取消</button>
+        <button type="submit" class="primary">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
