@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import os
 import tempfile
@@ -186,6 +188,66 @@ class ApiTest(unittest.TestCase):
             status, _ = self.call("GET", "/api/customers?sort=" + urllib.parse.quote(bad))
             self.assertEqual(status, 400, bad)
         self.assertEqual(len(self.names("")), 2)
+    def export(self, query=""):
+        with urllib.request.urlopen(self.base + "/api/customers/export.csv?" + query) as res:
+            self.assertEqual(res.status, 200)
+            self.assertTrue(res.headers["Content-Type"].startswith("text/csv"))
+            self.assertIn("attachment", res.headers["Content-Disposition"])
+            raw = res.read()
+        self.assertTrue(raw.startswith(b"\xef\xbb\xbf"), "應包含 UTF-8 BOM 供 Excel 辨識")
+        return list(csv.reader(io.StringIO(raw.decode("utf-8-sig"))))
+
+    def test_export_csv(self):
+        a = self.create(name="王小明", company="大明科技", email="ming@example.com",
+                        notes="第一行\n第二行, 含逗號與\"引號\"")
+        self.create(name="李美華", company="美華貿易", status="已成交")
+        self.call("POST", f"/api/customers/{a['id']}/interactions",
+                  {"contact_date": "2026-09-15", "content": "x"})
+
+        rows = self.export()
+        header = rows[0]
+        self.assertEqual(header[:3], ["編號", "客戶名稱", "公司"])
+        self.assertEqual(len(rows), 3)
+        ming = dict(zip(header, next(r for r in rows[1:] if r[1] == "王小明")))
+        self.assertEqual(ming["Email"], "ming@example.com")
+        self.assertEqual(ming["備註"], "第一行\n第二行, 含逗號與\"引號\"")
+        self.assertEqual(ming["聯絡紀錄筆數"], "1")
+        self.assertEqual(ming["最後聯絡日期"], "2026-09-15")
+
+    def test_export_csv_uses_search_and_filter(self):
+        self.create(name="王小明", company="大明科技")
+        self.create(name="李美華", company="美華貿易", status="已成交")
+        self.create(name="陳大同", notes="大明介紹", status="已成交")
+
+        rows = self.export("q=" + urllib.parse.quote("大明"))
+        self.assertEqual({r[1] for r in rows[1:]}, {"王小明", "陳大同"})
+        rows = self.export("status=" + urllib.parse.quote("已成交"))
+        self.assertEqual({r[1] for r in rows[1:]}, {"李美華", "陳大同"})
+        rows = self.export("q=" + urllib.parse.quote("大明") + "&status="
+                           + urllib.parse.quote("已成交"))
+        self.assertEqual([r[1] for r in rows[1:]], ["陳大同"])
+        # 沒有符合的資料時仍輸出標題列
+        rows = self.export("q=nobody")
+        self.assertEqual(len(rows), 1)
+
+    def test_export_csv_uses_sort(self):
+        self.create(name="bob", company="Beta")
+        self.create(name="Alice", company="")
+        self.create(name="Carol", company="Alpha")
+        rows = self.export("sort=name&order=desc")
+        self.assertEqual([r[1] for r in rows[1:]], ["Carol", "bob", "Alice"])
+        rows = self.export("sort=company")
+        self.assertEqual([r[1] for r in rows[1:]], ["Carol", "bob", "Alice"])
+        status, _ = self.call("GET", "/api/customers/export.csv?sort=email")
+        self.assertEqual(status, 400)
+
+    def test_export_csv_escapes_formulas(self):
+        self.create(name="=HYPERLINK(\"http://evil\")", phone="+886 912 345 678",
+                    notes="@SUM(A1)")
+        row = dict(zip(*self.export()[:2]))
+        self.assertEqual(row["客戶名稱"], "'=HYPERLINK(\"http://evil\")")
+        self.assertEqual(row["電話"], "'+886 912 345 678")
+        self.assertEqual(row["備註"], "'@SUM(A1)")
 
     def test_interactions(self):
         c = self.create()

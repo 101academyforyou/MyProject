@@ -5,9 +5,11 @@ import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
 from .db import CONTACT_METHODS, STATUSES, Database, ValidationError
+from .export import customers_to_csv
 
 STATIC_DIR = Path(__file__).parent / "static"
 STATIC_TYPES = {
@@ -20,6 +22,7 @@ STATIC_TYPES = {
 ROUTES = [
     ("GET", r"/api/meta", "meta"),
     ("GET", r"/api/customers", "list_customers"),
+    ("GET", r"/api/customers/export\.csv", "export_customers"),
     ("POST", r"/api/customers", "create_customer"),
     ("GET", r"/api/customers/(\d+)", "get_customer"),
     ("PUT", r"/api/customers/(\d+)", "update_customer"),
@@ -60,8 +63,8 @@ def make_handler(db):
                     args = [int(a) for a in match.groups()]
                     try:
                         with lock:
-                            status, body = getattr(self, "api_" + name)(*args)
-                        return self._json(status, body)
+                            result = getattr(self, "api_" + name)(*args)
+                        return self._respond(*result)
                     except ValidationError as e:
                         return self._json(400, {"error": str(e)})
                     except NotFound:
@@ -93,13 +96,22 @@ def make_handler(db):
                 raise ValidationError("請求內容必須是 JSON 物件")
             return data
 
+        def _respond(self, status, body, headers=None):
+            """body 為 bytes 時直接送出（需在 headers 指定 Content-Type），否則轉為 JSON。"""
+            if headers is None:
+                return self._json(status, body)
+            self.send_response(status)
+            for key, value in headers.items():
+                self.send_header(key, value)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
         def _json(self, status, body):
             payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(payload)))
-            self.end_headers()
-            self.wfile.write(payload)
+            self._respond(
+                status, payload, {"Content-Type": "application/json; charset=utf-8"}
+            )
 
         def _serve_static(self, path):
             name = "index.html" if path == "/" else path.lstrip("/")
@@ -130,13 +142,24 @@ def make_handler(db):
                 "summary": db.status_summary(),
             }
 
+        def _customer_filters(self):
+            """列表與匯出共用的搜尋／篩選／排序條件。"""
+            return {
+                "q": self.query.get("q", ""),
+                "status": self.query.get("status", ""),
+                "sort": self.query.get("sort", ""),
+                "order": self.query.get("order", "asc"),
+            }
+
         def api_list_customers(self):
-            return 200, db.list_customers(
-                q=self.query.get("q", ""),
-                status=self.query.get("status", ""),
-                sort=self.query.get("sort", ""),
-                order=self.query.get("order", "asc"),
-            )
+            return 200, db.list_customers(**self._customer_filters())
+
+        def api_export_customers(self):
+            filename = f"customers-{datetime.now():%Y%m%d-%H%M%S}.csv"
+            return 200, customers_to_csv(db.list_customers(**self._customer_filters())), {
+                "Content-Type": "text/csv; charset=utf-8",
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            }
 
         def api_create_customer(self):
             return 201, db.create_customer(self._body())
