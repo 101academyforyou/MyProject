@@ -1,5 +1,7 @@
 # MyProject — 客戶管理系統
 
+[![Tests](https://github.com/101academyforyou/MyProject/actions/workflows/test.yml/badge.svg)](https://github.com/101academyforyou/MyProject/actions/workflows/test.yml)
+
 用 Claude 開發。一個簡單的客戶管理（CRM）系統，只需要 Python 3.9 以上，**不需安裝任何套件**。
 
 ## 功能
@@ -31,6 +33,8 @@ python3 app.py --port 9000 --db 公司客戶.db --host 0.0.0.0
 ```bash
 python3 -m unittest discover -s tests -t .
 ```
+
+每次推送到 `main` 或開啟 Pull Request 時，GitHub Actions 會自動在 Python 3.9、3.11、3.13 上執行測試（設定檔：`.github/workflows/test.yml`）。
 
 ## 專案結構
 
