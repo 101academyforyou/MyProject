@@ -8,7 +8,8 @@
 
 - **客戶管理**：新增、修改、刪除客戶（名稱、公司、Email、電話、地址、備註）
 - **搜尋**：以名稱、公司、Email、電話、備註關鍵字搜尋
-- **CSV 匯出**：將目前搜尋／篩選結果匯出成 CSV（含 BOM，可直接用 Excel 開啟中文）
+- **排序**：依姓名、公司名稱、最後聯絡日期升冪／降冪排序（英文不分大小寫；空白或從未聯絡的客戶一律排在最後）
+- **CSV 匯出**：將目前搜尋／篩選結果匯出成 CSV（含 BOM，可直接用 Excel 開啟中文），並套用目前的排序
 - **客戶狀態**：潛在客戶 / 洽談中 / 已成交 / 暫停 / 流失，可依狀態篩選，首頁顯示各狀態數量
 - **聯絡紀錄**：記錄每次聯絡的日期、方式（電話、Email、會議、拜訪…）與內容，依時間排列
 - 刪除客戶時，其聯絡紀錄會一併刪除
@@ -53,8 +54,8 @@ tests/test_api.py   API 測試
 | 方法 | 路徑 | 說明 |
 |---|---|---|
 | GET | `/api/meta` | 狀態清單、聯絡方式清單、各狀態客戶數 |
-| GET | `/api/customers?q=關鍵字&status=狀態` | 列出 / 搜尋客戶 |
-| GET | `/api/customers/export.csv?q=關鍵字&status=狀態` | 以 CSV 匯出符合條件的客戶 |
+| GET | `/api/customers?q=關鍵字&status=狀態&sort=欄位&order=asc\|desc` | 列出 / 搜尋客戶；`sort` 可為 `name`、`company`、`last_contact`，未指定時依最近更新排序 |
+| GET | `/api/customers/export.csv?q=關鍵字&status=狀態&sort=欄位&order=asc\|desc` | 以 CSV 匯出符合條件的客戶（參數同上） |
 | POST | `/api/customers` | 新增客戶 |
 | GET | `/api/customers/{id}` | 取得客戶 |
 | PUT | `/api/customers/{id}` | 修改客戶（可只傳要修改的欄位） |

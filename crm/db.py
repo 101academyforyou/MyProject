@@ -9,6 +9,15 @@ CONTACT_METHODS = ["電話", "Email", "會議", "拜訪", "通訊軟體", "其�
 CUSTOMER_FIELDS = ["name", "company", "email", "phone", "address", "status", "notes"]
 INTERACTION_FIELDS = ["contact_date", "method", "content"]
 
+# 客戶列表可用的排序欄位（API 參數 → SQL 欄位）
+# 文字欄位使用 NOCASE，英文不分大小寫排序（否則 "Carol" 會排在 "bob" 之前）
+SORT_FIELDS = {
+    "name": "c.name COLLATE NOCASE",
+    "company": "c.company COLLATE NOCASE",
+    "last_contact": "last_contact",
+}
+SORT_ORDERS = ["asc", "desc"]
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS customers (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,7 +84,7 @@ class Database:
         if data.get("email") and "@" not in data["email"]:
             raise ValidationError("Email 格式不正確")
 
-    def list_customers(self, q="", status=""):
+    def list_customers(self, q="", status="", sort="", order="asc"):
         sql = """
             SELECT c.*,
                    (SELECT COUNT(*) FROM interactions i WHERE i.customer_id = c.id)
@@ -93,7 +102,17 @@ class Database:
         if status:
             sql += " AND c.status = ?"
             params.append(status)
-        sql += " ORDER BY c.updated_at DESC, c.id DESC"
+        if sort:
+            order = (order or "asc").lower()
+            if sort not in SORT_FIELDS:
+                raise ValidationError(f"排序欄位必須是：{'、'.join(SORT_FIELDS)}")
+            if order not in SORT_ORDERS:
+                raise ValidationError("排序方向必須是 asc 或 desc")
+            col = SORT_FIELDS[sort]
+            # 空值（例如從未聯絡）無論升冪或降冪都排在最後
+            sql += f" ORDER BY {col} IS NULL OR {col} = '', {col} {order.upper()}, c.id"
+        else:
+            sql += " ORDER BY c.updated_at DESC, c.id DESC"
         return [dict(r) for r in self.conn.execute(sql, params)]
 
     def get_customer(self, customer_id):

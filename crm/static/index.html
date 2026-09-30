@@ -18,6 +18,15 @@
     <section class="toolbar">
       <input id="search" type="search" placeholder="搜尋名稱、公司、Email、電話、備註…">
       <select id="filter-status"><option value="">全部狀態</option></select>
+      <div class="sort">
+        <select id="sort-field" title="排序方式">
+          <option value="">最近更新</option>
+          <option value="name">依姓名</option>
+          <option value="company">依公司名稱</option>
+          <option value="last_contact">依最後聯絡日期</option>
+        </select>
+        <button id="sort-order" type="button" data-order="asc" title="切換升冪／降冪" disabled>↑ 升冪</button>
+      </div>
       <button id="btn-export" type="button" title="匯出目前搜尋／篩選結果">⭳ 匯出 CSV</button>
     </section>
 

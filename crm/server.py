@@ -143,10 +143,12 @@ def make_handler(db):
             }
 
         def _customer_filters(self):
-            """列表與匯出共用的搜尋／篩選條件。"""
+            """列表與匯出共用的搜尋／篩選／排序條件。"""
             return {
                 "q": self.query.get("q", ""),
                 "status": self.query.get("status", ""),
+                "sort": self.query.get("sort", ""),
+                "order": self.query.get("order", "asc"),
             }
 
         def api_list_customers(self):
