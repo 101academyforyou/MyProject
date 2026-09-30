@@ -1,2 +1,9 @@
-__pycache__/
+# Maven 建置輸出
+target/
+
+# IntelliJ（.run/ 內的共用執行設定需保留）
+.idea/
+*.iml
+
+# 資料庫
 *.db
