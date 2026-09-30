@@ -49,6 +49,7 @@ input, select, textarea {
 
 .toolbar { display: flex; gap: 12px; margin: 16px 0; }
 .toolbar select { width: 160px; }
+.toolbar button { white-space: nowrap; flex-shrink: 0; }
 
 .layout { display: grid; grid-template-columns: 1fr 420px; gap: 16px; align-items: start; }
 

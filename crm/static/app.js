@@ -49,13 +49,18 @@ async function loadMeta() {
   renderSummary();
 }
 
-async function loadCustomers() {
+// 目前的搜尋／篩選條件（列表與 CSV 匯出共用）
+function customerQuery() {
   const params = new URLSearchParams();
   const q = $("#search").value.trim();
   const status = $("#filter-status").value;
   if (q) params.set("q", q);
   if (status) params.set("status", status);
-  state.customers = await api("GET", "/api/customers?" + params);
+  return params;
+}
+
+async function loadCustomers() {
+  state.customers = await api("GET", "/api/customers?" + customerQuery());
   renderList();
 }
 
@@ -189,6 +194,13 @@ $("#customer-form").addEventListener("submit", async (e) => {
 
 $("#btn-cancel").addEventListener("click", () => $("#customer-dialog").close());
 $("#btn-new").addEventListener("click", () => openCustomerDialog(null));
+
+$("#btn-export").addEventListener("click", () => {
+  const link = document.createElement("a");
+  link.href = "/api/customers/export.csv?" + customerQuery();
+  link.download = "";
+  link.click();
+});
 
 // ---------- 列表與篩選 ----------
 
