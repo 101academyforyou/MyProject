@@ -116,6 +116,36 @@ class ApiTest(unittest.TestCase):
         count = self.server.db.conn.execute("SELECT COUNT(*) FROM interactions").fetchone()[0]
         self.assertEqual(count, 0)
 
+    def test_interaction_filter_by_method(self):
+        c = self.create()
+        other = self.create(name="李美華")
+        path = f"/api/customers/{c['id']}/interactions"
+        for date, method, content in [("2026-09-01", "電話", "初次聯繫"),
+                                      ("2026-09-10", "會議", "簡報"),
+                                      ("2026-09-20", "電話", "追蹤報價")]:
+            self.call("POST", path, {"contact_date": date, "method": method, "content": content})
+        self.call("POST", f"/api/customers/{other['id']}/interactions",
+                  {"method": "電話", "content": "別的客戶"})
+
+        _, items = self.call("GET", path + "?method=" + urllib.parse.quote("電話"))
+        self.assertEqual([i["content"] for i in items], ["追蹤報價", "初次聯繫"])
+        _, items = self.call("GET", path + "?method=" + urllib.parse.quote("會議"))
+        self.assertEqual([i["content"] for i in items], ["簡報"])
+        _, items = self.call("GET", path + "?method=Email")
+        self.assertEqual(items, [])
+
+        # 未指定或空白時回傳全部
+        _, items = self.call("GET", path)
+        self.assertEqual(len(items), 3)
+        _, items = self.call("GET", path + "?method=")
+        self.assertEqual(len(items), 3)
+
+        status, body = self.call("GET", path + "?method=" + urllib.parse.quote("飛鴿傳書"))
+        self.assertEqual(status, 400)
+        self.assertIn("聯絡方式", body["error"])
+        status, _ = self.call("GET", "/api/customers/999/interactions?method=Email")
+        self.assertEqual(status, 404)
+
     def test_static_files(self):
         with urllib.request.urlopen(self.base + "/") as res:
             self.assertIn("客戶管理系統", res.read().decode())

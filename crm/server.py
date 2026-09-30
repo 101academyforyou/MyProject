@@ -151,7 +151,7 @@ def make_handler(db):
 
         def api_list_interactions(self, cid):
             self._found(db.get_customer(cid))
-            return 200, db.list_interactions(cid)
+            return 200, db.list_interactions(cid, method=self.query.get("method", ""))
 
         def api_create_interaction(self, cid):
             return 201, self._found(db.create_interaction(cid, self._body()))

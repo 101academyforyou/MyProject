@@ -10,6 +10,7 @@
 - **搜尋**：以名稱、公司、Email、電話、備註關鍵字搜尋
 - **客戶狀態**：潛在客戶 / 洽談中 / 已成交 / 暫停 / 流失，可依狀態篩選，首頁顯示各狀態數量
 - **聯絡紀錄**：記錄每次聯絡的日期、方式（電話、Email、會議、拜訪…）與內容，依時間排列
+- **聯絡紀錄篩選**：在客戶詳細資料中依聯絡方式篩選聯絡紀錄
 - 刪除客戶時，其聯絡紀錄會一併刪除
 
 ## 啟動
@@ -56,7 +57,7 @@ tests/test_api.py   API 測試
 | GET | `/api/customers/{id}` | 取得客戶 |
 | PUT | `/api/customers/{id}` | 修改客戶（可只傳要修改的欄位） |
 | DELETE | `/api/customers/{id}` | 刪除客戶 |
-| GET | `/api/customers/{id}/interactions` | 列出聯絡紀錄 |
+| GET | `/api/customers/{id}/interactions?method=聯絡方式` | 列出聯絡紀錄；可用 `method` 依聯絡方式篩選 |
 | POST | `/api/customers/{id}/interactions` | 新增聯絡紀錄 |
 | PUT | `/api/interactions/{id}` | 修改聯絡紀錄 |
 | DELETE | `/api/interactions/{id}` | 刪除聯絡紀錄 |
