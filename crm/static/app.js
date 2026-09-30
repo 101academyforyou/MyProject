@@ -11,6 +11,7 @@ const state = {
   customers: [],
   selectedId: null,
   editingId: null,
+  interactionMethod: "", // 聯絡紀錄篩選：空字串代表全部方式
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -91,11 +92,14 @@ function renderList() {
 }
 
 async function showDetail(id) {
+  if (id !== state.selectedId) state.interactionMethod = "";
+  const params = new URLSearchParams();
+  if (state.interactionMethod) params.set("method", state.interactionMethod);
   let customer, interactions;
   try {
     [customer, interactions] = await Promise.all([
       api("GET", `/api/customers/${id}`),
-      api("GET", `/api/customers/${id}/interactions`),
+      api("GET", `/api/customers/${id}/interactions?${params}`),
     ]);
   } catch {
     state.selectedId = null;
@@ -108,6 +112,10 @@ async function showDetail(id) {
   const statusOpts = state.meta.statuses.map((s) =>
     `<option ${s === customer.status ? "selected" : ""}>${esc(s)}</option>`).join("");
   const methodOpts = state.meta.contact_methods.map((m) => `<option>${esc(m)}</option>`).join("");
+  const filterOpts = [["", "全部方式"]].concat(state.meta.contact_methods.map((m) => [m, m]))
+    .map(([v, label]) =>
+      `<option value="${esc(v)}" ${v === state.interactionMethod ? "selected" : ""}>${esc(label)}</option>`)
+    .join("");
   const info = [
     ["公司", customer.company], ["Email", customer.email], ["電話", customer.phone],
     ["地址", customer.address], ["備註", customer.notes],
@@ -124,7 +132,7 @@ async function showDetail(id) {
           </div>
           <div class="content">${esc(i.content)}</div>
         </li>`).join("")
-    : `<p class="empty">尚無聯絡紀錄</p>`;
+    : `<p class="empty">${state.interactionMethod ? "沒有符合此聯絡方式的紀錄" : "尚無聯絡紀錄"}</p>`;
 
   $("#detail").innerHTML = `
     <div class="detail-head">
@@ -150,7 +158,12 @@ async function showDetail(id) {
       <button type="submit" class="primary">新增紀錄</button>
     </form>
 
-    <h3>聯絡紀錄（${interactions.length}）</h3>
+    <div class="timeline-head">
+      <h3>聯絡紀錄（${state.interactionMethod
+        ? `${esc(state.interactionMethod)} ${interactions.length} 筆`
+        : interactions.length}）</h3>
+      <select id="interaction-filter" title="依聯絡方式篩選">${filterOpts}</select>
+    </div>
     <ul class="timeline">${timeline}</ul>`;
 }
 
@@ -237,6 +250,11 @@ $("#detail").addEventListener("click", async (e) => {
 });
 
 $("#detail").addEventListener("change", async (e) => {
+  if (e.target.id === "interaction-filter") {
+    state.interactionMethod = e.target.value;
+    await showDetail(state.selectedId);
+    return;
+  }
   if (e.target.id !== "quick-status") return;
   await api("PUT", `/api/customers/${state.selectedId}`, { status: e.target.value });
   await refresh();
@@ -248,6 +266,8 @@ $("#detail").addEventListener("submit", async (e) => {
   const data = Object.fromEntries(new FormData(e.target));
   try {
     await api("POST", `/api/customers/${state.selectedId}/interactions`, data);
+    // 新增後顯示全部方式，確保剛新增的紀錄看得到
+    state.interactionMethod = "";
     await refresh();
   } catch (err) {
     $("#interaction-error").textContent = err.message;

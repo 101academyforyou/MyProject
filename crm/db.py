@@ -144,13 +144,16 @@ class Database:
 
     # ---------- 聯絡紀錄 ----------
 
-    def list_interactions(self, customer_id):
-        rows = self.conn.execute(
-            """SELECT * FROM interactions WHERE customer_id = ?
-               ORDER BY contact_date DESC, id DESC""",
-            (customer_id,),
-        )
-        return [dict(r) for r in rows]
+    def list_interactions(self, customer_id, method=""):
+        sql = "SELECT * FROM interactions WHERE customer_id = ?"
+        params = [customer_id]
+        if method:
+            if method not in CONTACT_METHODS:
+                raise ValidationError(f"聯絡方式必須是：{'、'.join(CONTACT_METHODS)}")
+            sql += " AND method = ?"
+            params.append(method)
+        sql += " ORDER BY contact_date DESC, id DESC"
+        return [dict(r) for r in self.conn.execute(sql, params)]
 
     def get_interaction(self, interaction_id):
         row = self.conn.execute(
