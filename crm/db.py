@@ -10,7 +10,12 @@ CUSTOMER_FIELDS = ["name", "company", "email", "phone", "address", "status", "no
 INTERACTION_FIELDS = ["contact_date", "method", "content"]
 
 # 客戶列表可用的排序欄位（API 參數 → SQL 欄位）
-SORT_FIELDS = {"name": "c.name", "company": "c.company", "last_contact": "last_contact"}
+# 文字欄位使用 NOCASE，英文不分大小寫排序（否則 "Carol" 會排在 "bob" 之前）
+SORT_FIELDS = {
+    "name": "c.name COLLATE NOCASE",
+    "company": "c.company COLLATE NOCASE",
+    "last_contact": "last_contact",
+}
 SORT_ORDERS = ["asc", "desc"]
 
 SCHEMA = """
@@ -98,6 +103,7 @@ class Database:
             sql += " AND c.status = ?"
             params.append(status)
         if sort:
+            order = (order or "asc").lower()
             if sort not in SORT_FIELDS:
                 raise ValidationError(f"排序欄位必須是：{'、'.join(SORT_FIELDS)}")
             if order not in SORT_ORDERS:
